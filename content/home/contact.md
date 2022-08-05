@@ -30,7 +30,7 @@ content:
     - icon: twitter
       icon_pack: fab
       name: 'Twitter'
-      link: 'https://twitter.com/ischurov'
+      link: 'https://twitter.com/ilya_schurov'
     - icon: linkedin
       icon_pack: fab
       name: 'LinkedIn'

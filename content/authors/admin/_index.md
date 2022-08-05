@@ -42,7 +42,7 @@ social:
   link: '/#contact'
 - icon: twitter
   icon_pack: fab
-  link: https://twitter.com/ilyaschurov
+  link: https://twitter.com/ilya_schurov
 - icon: graduation-cap  # Alternatively, use `google-scholar` icon from `ai` icon pack
   icon_pack: fas
   link: https://scholar.google.com/citations?user=_J6ZTMIAAAAJ
