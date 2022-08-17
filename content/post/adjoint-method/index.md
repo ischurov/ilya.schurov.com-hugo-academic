@@ -81,32 +81,13 @@ or like this:
 $$A(Bx).$$
 {{< /math >}} 
 
-Of course, we'll get the same results, but computationally these two formulas
-are different. In the first case, we find matrix {{< math >}}$AB${{< /math >}},
-that takes {{< math >}}$O(n^3)${{< /math >}} elementary multiplications, then keep
-this new matrix in memory, that is {{< math >}}$O(n^2)${{< /math >}}, and then
-multiply it on {{< math >}}$x${{< /math >}}. The last operation is cheep and
-only needs {{< math >}}$O(n^2)${{< /math >}} operations.
+Of course, we'll get the same results, but computationally these two formulas are different. In the first case, we find matrix {{< math >}}$AB${{< /math >}}, that takes {{< math >}}$O(n^3)${{< /math >}} elementary multiplications, then keep this new matrix in memory, that is {{< math >}}$O(n^2)${{< /math >}}, and then multiply it on {{< math >}}$x${{< /math >}}. The last operation is cheep and only needs {{< math >}}$O(n^2)${{< /math >}} operations.
 
-In the second approach, we first find {{< math >}}$Bx${{< /math >}}, that is
-cheap, {{< math >}}$O(n^2)${{< /math >}} operations and {{< math >}}$O(n)${{<
-/math >}} memory. Than we multiply {{< math >}}$A${{< /math >}} by the result of
-previous computation, that is again cheap. And we're done! So, the difference
-between two method is dramatic: {{< math >}}$O(n^3)${{< /math >}} vs. {{< math
->}}$O(n^2)${{< /math >}} in operations and {{< math >}}$O(n^2)${{< /math >}} vs.
-{{< math >}}$O(n)${{< /math >}} in memory. The second approach is much more
-efficient!
+In the second approach, we first find {{< math >}}$Bx${{< /math >}}, that is cheap, {{< math >}}$O(n^2)${{< /math >}} operations and {{< math >}}$O(n)${{< /math >}} memory. Than we multiply {{< math >}}$A${{< /math >}} by the result of previous computation, that is again cheap. And we're done! So, the difference between two method is dramatic: {{< math >}}$O(n^3)${{< /math >}} vs. {{< math >}}$O(n^2)${{< /math >}} in operations and {{< math >}}$O(n^2)${{< /math >}} vs. {{< math >}}$O(n)${{< /math >}} in memory. The second approach is much more efficient!
 
-Of course, it works only if we have only one vector {{< math >}}$x${{< /math >}} that should be multiplied by {{< math >}}$AB${{< /math >}}; if there are
-many such vectors, it can be more efficient to find the product {{< math >}}$AB${{< /math >}} once and then reuse it. However, as we will see below, in
-our problems, including backpropagation, this kind of calculation is effectively
-one-time. 
+Of course, it works only if we have only one vector {{< math >}}$x${{< /math >}} that should be multiplied by {{< math >}}$AB${{< /math >}}; if there are many such vectors, it can be more efficient to find the product {{< math >}}$AB${{< /math >}} once and then reuse it. However, as we will see below, in our problems, including backpropagation, this kind of calculation is effectively one-time.
 
-The last thing I want to mention here is that if instead of vector-column $x$ we
-consider vector-row {{< math >}}$u${{< /math >}} (mathematically speaking, rather 
-covector than vector, if we represent vectors as vector-columns), and we want to
-find a product {{< math >}}$uAB${{< /math >}}, this again can be done in two
-different ways:
+The last thing I want to mention here is that if instead of vector-column $x$ we consider vector-row {{< math >}}$u${{< /math >}} (mathematically speaking, rather covector than vector, if we represent vectors as vector-columns), and we want to find a product {{< math >}}$uAB${{< /math >}}, this again can be done in two different ways:
 
 {{< math >}}
 $$
@@ -369,16 +350,7 @@ For simplicity, assume we have a neural network that consists only of three laye
     f^{i}_\theta\colon \mathbb R^{n_{i-1}} \to \mathbb R^{n_i},
 $${{< /math >}} 
 
-where {{< math >}}$\theta\in \mathbb R^p${{< /math >}}
-is a vector of all parameters of the neural network (i.e. all weights and
-biases), {{< math >}}$n_i${{< /math >}} is the dimensionality of the output of
-{{< math >}}$i${{< /math >}}'th layer, {{< math >}}$n_0${{< /math >}} is the input
-dimensionality of the network. Usually each layer depends only
-on a subset of parameters in {{< math >}}$\theta${{< /math >}} and implements an
-affine function in elementwise composition with nonlinear activation function,
-but we are not interested in such architecture details now and consider rather
-general case. The full network
-defines a function
+where {{< math >}}$\theta\in \mathbb R^p${{< /math >}} is a vector of all parameters of the neural network (i.e. all weights and biases), {{< math >}}$n_i${{< /math >}} is the dimensionality of the output of {{< math >}}$i${{< /math >}}'th layer, {{< math >}}$n_0${{< /math >}} is the input dimensionality of the network. Usually each layer depends only on a subset of parameters in {{< math >}}$\theta${{< /math >}} and implements an affine function in elementwise composition with nonlinear activation function, but we are not interested in such architecture details now and consider rather general case. The full network defines a function
 
 {{< math >}}$$
     f_{\theta}(x) := f^{3}_\theta\circ f^{2}_\theta \circ f^{1}_\theta(x)
