@@ -3,9 +3,9 @@ title: Adjoint State Method, Backpropagation and Neural ODEs
 
 summary: |-
     You probably heard about Neural ODEs, a neural network architecture based on
-    the ordinary differential equations. To train this kind of models, a mysterious
-    trick called _adjoint state method_ is used. How does it work, why do we
-    need it and how it is related to backpropagation? 
+    ordinary differential equations. To train this kind of models, a mysterious
+    trick called _the adjoint state method_ is used. How does it work, why do we
+    need it, and how it is related to backpropagation? 
 
 tags:
 - machine learning
@@ -35,21 +35,21 @@ url_video: ""
 ---
 
 
-You probably heard about Neural ODEs[^1], a neural network architecture based on the ordinary differential equations. When I first read about them, my thoughts were: okay, we have an ODE given by a neural network, now we need to learn weights of that neural network, thus we need gradients, thus we have to find derivates of the solution of an ODE with respect to parameters. And we have a standard tool for that in ODE theory, it's called “variational equations”, so let's just apply them and we're done. Case closed.
+You probably heard about Neural ODEs[^1], a neural network architecture based on ordinary differential equations. When I first read about them, my thoughts were: okay, we have an ODE given by a neural network, now we need to learn weights of that neural network, thus we need gradients, thus we have to find derivates of the solution of an ODE with respect to parameters. And we have a standard tool for that in ODE theory, it's called “variational equations”, so let's just apply them and we're done. Case closed.
 
-However, in the paper, the authors used much more elaborate approach, based on something called _adjoint state method_. It was strange: why we need some cryptic mathematical magic to solve such a standard problem? In various other discussions, I heard from time to time that these mysterious _adjoints_ are somehow related to backpropagation. However, all tutorials on adjoint state method I was able to find used a bunch of sophisticated infinite-dimensional optimization theory, and it was not clear for me, how this can be related to such a simple thing as backpropagation?
+However, in the paper, the authors used a much more elaborate approach, based on something called _the adjoint state method_. It was strange: why do we need some cryptic mathematical magic to solve such a standard problem? In various other discussions, I heard from time to time that these mysterious _adjoints_ are somehow related to backpropagation. However, all tutorials on the adjoint state method I was able to find used a bunch of sophisticated infinite-dimensional optimization theory, and it was not clear to me, how this can be related to such a simple thing as backpropagation.
 
-It was my surprise when I understood that adjoint state method in fact is based on a very simple idea. And now I want share it with you.
+It was my surprise when I understood that the adjoint state method in fact is based on a very simple idea. And now I want to share it with you.
 
 {{< callout note >}}
 
-This post turned out to be rather long. I tried to make it as accessible as possible, so included detailed explanations of all the derivations. This led to inclusion of various equations that sometimes can look scary. Don't be afraid: there are also a lot of illustrations and informal descriptions to guide you through the story.
+This post turned out to be rather long. I tried to make it as accessible as possible, so included detailed explanations of all the derivations. This led to the inclusion of various equations that sometimes can look scary. Don't be afraid: there are also a lot of illustrations and informal descriptions to guide you through the story.
 
-- In the [first part](#forward-and-backward), I recall briefly some notions from multidimensional calculus and present the main constructions that will be used later. The reader is expected to be familiar with matrix calculations, the notion of a derivative of multidimensional map and the chain rule, whilst the two latter will be recalled.
+- In the [first part](#forward-and-backward), I recall briefly some notions from multidimensional calculus and present the main constructions that will be used later. The reader is expected to be familiar with matrix calculations, the notion of a derivative of a multidimensional map, and the chain rule, whilst the two latter will be recalled.
 
 - The [second part](#backpropagation-in-neural-networks) is an introduction to the backpropagation in the usual dense neural networks. Here I present an exposition that is focused on the effective implementation of the backpropagation using matrix calculations and also has close ties with the adjoint state method in the neural ODEs. Nevertheless, I hope you will find something new and interesting about backpropagation from this part even if you are not interested in the neural ODEs.
 
-- The [last part](#adjoint-state-method-in-neural-odes) is devoted to the adjoint state method. Here I expect some very basic knowledge of the ordinary differential equations. The main results from the ODE theory will be recalled.
+- The [last part](#adjoint-state-method-in-neural-odes) is devoted to the adjoint state method. Here I expect some very basic knowledge of ordinary differential equations. The main results from the ODE theory will be recalled.
 
 That is not an easy journey, but I hope you will find it as exciting as I did. If you have any questions regarding this post, do not hesitate to get in touch on [Twitter](https://twitter.com/ilya_schurov).
 
@@ -59,9 +59,9 @@ Now, let's go!
 
 ## Forward and backward
 
-### How to mupliply matrices
+### How to multiply matrices
 
-Before we begin with backpropagation and neural ODEs, let's talk about something very simple: about matrix multiplication.
+Before we begin with backpropagation and neural ODEs, let's talk about something very simple: matrix multiplication.
 
 Assume we have two square {{< math >}}$n \times n${{< /math >}} matrices, {{< math >}}$A${{< /math >}} and {{< math >}}$B${{< /math >}}, and {{< math >}}$n${{< /math >}}-dimensional vector (vector-column) {{< math >}}$x${{< /math >}}. Consider the following product:
 
@@ -69,7 +69,7 @@ Assume we have two square {{< math >}}$n \times n${{< /math >}} matrices, {{< ma
 $$ABx$$
 {{< /math >}}
 
-As matrix multiplication is associatative, we don't need any brackets in this formula. However, if we try to put them, we'll note that it can be done in two different ways: we can either write it like this:
+As matrix multiplication is associative, we don't need any brackets in this formula. However, if we try to put them, we'll note that it can be done in two different ways: we can either write it like this:
 
 {{< math >}}
 $$(AB)x$$
@@ -81,9 +81,9 @@ or like this:
 $$A(Bx).$$
 {{< /math >}} 
 
-Of course, we'll get the same results, but computationally these two formulas are different. In the first case, we find matrix {{< math >}}$AB${{< /math >}}, that takes {{< math >}}$O(n^3)${{< /math >}} elementary multiplications, then keep this new matrix in memory, that is {{< math >}}$O(n^2)${{< /math >}}, and then multiply it on {{< math >}}$x${{< /math >}}. The last operation is cheep and only needs {{< math >}}$O(n^2)${{< /math >}} operations.
+Of course, we'll get the same results, but computationally these two formulas are different. In the first case, we find matrix {{< math >}}$AB${{< /math >}}, that takes {{< math >}}$O(n^3)${{< /math >}} elementary multiplications, then keep this new matrix in memory, that is {{< math >}}$O(n^2)${{< /math >}}, and then multiply it on {{< math >}}$x${{< /math >}}. The last operation is cheap and only needs {{< math >}}$O(n^2)${{< /math >}} operations.
 
-In the second approach, we first find {{< math >}}$Bx${{< /math >}}, that is cheap, {{< math >}}$O(n^2)${{< /math >}} operations and {{< math >}}$O(n)${{< /math >}} memory. Than we multiply {{< math >}}$A${{< /math >}} by the result of previous computation, that is again cheap. And we're done! So, the difference between two method is dramatic: {{< math >}}$O(n^3)${{< /math >}} vs. {{< math >}}$O(n^2)${{< /math >}} in operations and {{< math >}}$O(n^2)${{< /math >}} vs. {{< math >}}$O(n)${{< /math >}} in memory. The second approach is much more efficient!
+In the second approach, we first find {{< math >}}$Bx${{< /math >}}, that is cheap, {{< math >}}$O(n^2)${{< /math >}} operations and {{< math >}}$O(n)${{< /math >}} memory. Then we multiply {{< math >}}$A${{< /math >}} by the result of the previous computation, which is again cheap. And we're done! So, the difference between two method is dramatic: {{< math >}}$O(n^3)${{< /math >}} vs. {{< math >}}$O(n^2)${{< /math >}} in operations and {{< math >}}$O(n^2)${{< /math >}} vs. {{< math >}}$O(n)${{< /math >}} in memory. The second approach is much more efficient!
 
 Of course, it works only if we have only one vector {{< math >}}$x${{< /math >}} that should be multiplied by {{< math >}}$AB${{< /math >}}; if there are many such vectors, it can be more efficient to find the product {{< math >}}$AB${{< /math >}} once and then reuse it. However, as we will see below, in our problems, including backpropagation, this kind of calculation is effectively one-time.
 
@@ -100,11 +100,11 @@ $$
 
 and now the first one is much cheaper.
 
-Does it sounds reasonable? If yes, congratulations: you understood the main idea of the adjoint state method!
+Does it sound reasonable? If yes, congratulations: you understood the main idea of the adjoint state method!
 
 ### Derivatives and gradients
 
-In what follows, we will be interested in maps from multidimensional spaces to multiminesional spaces (i.e. from $\mathbb R^n$ to $\mathbb R^m$ for some positive integer $n$ and $m$) and their derivatives. In general, we treat a derivative of a map $f\colon \mathbb R^n \to \mathbb R^m$ as the [Jacobian matrix](https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant), i.e. matrix of partial derivatives of components of $f$. We will denote it by $\partial f(x)/\partial x$, sometimes ommitting $(x)$. This matrix has $n$ columns and $m$ rows. By definition of a derivative, for any vector $\Delta x \in \mathbb R^n$ from some neighborhood of $0$,
+In what follows, we will be interested in maps from multidimensional spaces to multidimensional spaces (i.e. from $\mathbb R^n$ to $\mathbb R^m$ for some positive integer $n$ and $m$) and their derivatives. In general, we treat a derivative of a map $f\colon \mathbb R^n \to \mathbb R^m$ as the [Jacobian matrix](https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant), i.e. matrix of partial derivatives of components of $f$. We will denote it by $\partial f(x)/\partial x$, sometimes omitting $(x)$. This matrix has $n$ columns and $m$ rows. By definition of a derivative, for any vector $\Delta x \in \mathbb R^n$ from some neighborhood of $0$,
 
 {{< math >}}
 $$
@@ -119,13 +119,13 @@ $$ f(x+\Delta x)-f(x) \approx \frac{\partial f(x)}{\partial x} \Delta x.
 $$
 {{< /math >}}
 
-A useful illustration of this approximation is given on [Figure 1](#figure-ill-deriv): for map from $\mathbb R$ to $\mathbb R$, the length of an image of the small segment is approximately equal to the derivative multiplied by the length of the segment itself. If we replace segments with vectors based at $x$, the same illustration will work for multidimensional case.
+A useful illustration of this approximation is given on [Figure 1](#figure-ill-deriv): for a map from $\mathbb R$ to $\mathbb R$, the length of an image of the small segment is approximately equal to the derivative multiplied by the length of the segment itself. If we replace segments with vectors based at $x$, the same illustration will work for multidimensional case.
 
 {{< figure src="/img/adjoint-state/backprop-14.svg" width="90%" title="Figure 1. Illustration of a derivative" id="ill-deriv" >}}
 
-In a special case when $m=1$, the derivative is a matrix with 1 row, i.e. it is a vector-row. In this case we also call it a *gradient* of $f$ and denote by {{< math >}}$\nabla_{\!x} f(x)${{< /math >}}. (Strictly speaking, one should call this vector-row differential, not gradient, because it is a covector, and gradient is a vector, but we'll discuss the difference between them next time.)
+In a special case when $m=1$, the derivative is a matrix with 1 row, i.e. it is a vector-row. In this case we also call it a *gradient* of $f$ and denote by {{< math >}}$\nabla_{\!x} f(x)${{< /math >}}. (Strictly speaking, one should call this vector-row differential, not gradient, because it is a covector, and the gradient is a vector, but we'll discuss the difference between them next time.)
 
-Let us also recall the well-known [chain rule](https://en.wikipedia.org/wiki/Chain_rule) that simply says that derivative of a composition $g\circ f$ is a product (i.e. composition) of the derivatives:
+Let us also recall the well-known [chain rule](https://en.wikipedia.org/wiki/Chain_rule) that simply says that the derivative of a composition $g\circ f$ is a product (i.e. composition) of the derivatives:
 
 {{< math >}}$$
 \begin{equation}
@@ -139,7 +139,7 @@ where the first derivative is taken at point $h=f(x)$. This formula can be easil
 
 {{< figure src="/img/adjoint-state/backprop-15.svg" width="90%" title="Figure 2. The chain rule" id="chainrule" >}}
 
-We will also consider functions that depend on additional multidimensional parameter, usually denoted by $\theta \in \mathbb R^p$. Formally, such a function is just a map
+We will also consider functions that depend on an additional multidimensional parameter, usually denoted by $\theta \in \mathbb R^p$. Formally, such a function is just a map
 
 {{< math >}}$$
 f\colon \mathbb R^n \times \mathbb R^p \to \mathbb R^m,
@@ -174,9 +174,9 @@ It is very important for us that codomain of $G$ is one-dimensional. When we wil
 
 {{< figure src="/img/adjoint-state/backprop-5.svg" width="90%" title="Figure 3. Composition of several functions. All axes except the last one represent multidimensional spaces. The last axis is one-dimensional" id="composition" >}}
 
-If we have a value $x$ and want to find $G(x)$, the algorithm is straightforward: we find $h_1:=g^1(x)$, put it into $g^2$, thus finding $h_2:=g^2(h_1)$, put it into $g^3$ and so on, the last step is $y=g^N(h_{N-1})$. The flow of calculation is forward, from smaller indexes to larger (right-to-left, if we look at the formula, or left-to-right, if we look at the picture). This is what usually called “forward pass” in the neural networks.
+If we have a value $x$ and want to find $G(x)$, the algorithm is straightforward: we find $h_1:=g^1(x)$, put it into $g^2$, thus finding $h_2:=g^2(h_1)$, put it into $g^3$ and so on, the last step is $y=g^N(h_{N-1})$. The flow of calculation is forward, from smaller indexes to larger (right-to-left, if we look at the formula, or left-to-right, if we look at the picture). This is usually called “forward pass” in neural networks.
 
-Now what if we want to find the gradient {{< math >}}$\nabla_{\! x}$ {{< /math >}} (or, in other terms, the derivative $\partial G / \partial x$)?
+Now, what if we want to find the gradient {{< math >}}$\nabla_{\! x}$ {{< /math >}} (or, in other terms, the derivative $\partial G / \partial x$)?
 
 The chain rule \eqref{chain-rule} immediately gives us:
 
@@ -205,20 +205,20 @@ $$
 
 How to use this equation to find the gradient? First of all, we have to find $h_1, \ldots, h_{N-1}$, i.e. perform all the steps of the forward pass (except the last one). Then we have to find all the derivatives of functions $g^N$, $g^{N-1}$, …, $g^2$, $g^1$ at the corresponding points $h_{N-1}$, $h_{N-2}$, …, $h_1$, $x$. Then we have to multiply everything.
 
-As the leftmost multiplier is a vector-row, we are in the situation very similar to equation $\eqref{phiAB}$: we have a vector-row that is multiplied to a product of matrices. Just like we discussed above, the most natural and efficient way is to do it left-to-right: we first find a product
+As the leftmost multiplier is a vector-row, we are in a situation very similar to equation $\eqref{phiAB}$: we have a vector-row that is multiplied by a product of matrices. Just like we discussed above, the most natural and efficient way is to do it left-to-right: we first find a product
 
 {{< math >}}$$
 \nabla_{\!h_{N-1}} g^N
 \frac{\partial g^{N-1}}{\partial h_{N-2}},
 $${{< /math >}}
 
-obtain a new vector-row, multiply it by the next matrix, and so on. Now the calculation flow goes backward, from the terms with large indexes to the terms with small indexes (left-to-right if we look at the formula, or right-to-left if we look at the picture). This is what is known as _backward pass_.
+obtain a new vector row, multiply it by the next matrix, and so on. Now the calculation flow goes backward, from the terms with large indexes to the terms with small indexes (left-to-right if we look at the formula, or right-to-left if we look at the picture). This is what is known as _the backward pass_.
 
-Theoretically, one _can_ find the product in the right-hand side of equation $\eqref{nablaG}$ in a different order, e.g. right-to-left, but it would not be very efficient: one had to find and store some large intermediate matrices during the calculations. In our approach, we store only the initial matrices and intermediate vector-rows.
+Theoretically, one _can_ find the product on the right-hand side of the equation $\eqref{nablaG}$ in a different order, e.g. right-to-left, but it would not be very efficient: one had to find and store some large intermediate matrices during the calculations. In our approach, we store only the initial matrices and intermediate vector rows.
 
 {{< callout note >}}
 
-To summarise: consider a function that is given as a composition. There are two natural problems associated with it: to find its value at a particular point and to find its gradient. The flow of calculation of the value is forward, and the flow of calculation of the gradient is backward. To perform backward pass, we need to perform forward pass first to be able to find the derivatives that are needed in the backward pass.
+To summarise: consider a function that is given as a composition. There are two natural problems associated with it: to find its value at a particular point and to find its gradient. The flow of calculation of the value is forward, and the flow of calculation of the gradient is backward. To perform the backward pass, we need to perform the forward pass first to be able to find the derivatives that are needed in the backward pass.
 
 {{< /callout >}}
 
@@ -258,7 +258,7 @@ It is a map with codomain $\mathbb R$ that shows how $y$ depends on $h_i$. Its g
 \frac{\partial g^{i+1}}{\partial h_{i}}.
 $${{< /math >}}
 
-One can see that the right-hand side of this equation is a truncated version of equation $\eqref{nablaG}$: we only keep the first $(N-i)$ multipliers. And this is exactly what backward pass calculates at each step: for each $i$ decreasing from $(N-1)$ to $0$, we find {{< math >}}$ \nabla_{\! h_{i}} G^{i:N}${{< /math >}} multiplying the result of the previous step to $\partial g^{i+1}/\partial h_i$:
+One can see that the right-hand side of this equation is a truncated version of the equation $\eqref{nablaG}$: we only keep the first $(N-i)$ multipliers. And this is exactly what backward pass calculates at each step: for each $i$ decreasing from $(N-1)$ to $0$, we find {{< math >}}$ \nabla_{\! h_{i}} G^{i:N}${{< /math >}} multiplying the result of the previous step to $\partial g^{i+1}/\partial h_i$:
 
 {{< math >}}$$
 \begin{equation}
@@ -267,23 +267,23 @@ One can see that the right-hand side of this equation is a truncated version of 
 \end{equation}
 $${{< /math >}}
 
-Clearly, $G^{0:N}=G$ and at the last step we obtain gradient of $G$.
+Clearly, $G^{0:N}=G$ and at the last step we obtain the gradient of $G$.
 
-Here we see that forward and backward passes are very similar in nature, but at the same time has substantial difference. In the forward pass, the domain of each function $G^{0:j}$ we consider is fixed (it's $\mathbb R^n$, the same as the domain of $G$), but codomain shifts in “forward” direction, see [Figure 4](#figure-forward-trunc). In the backward pass, the codomain of the function $G^{i:N}$ is fixed (it's $\mathbb R$, the same as the codomain of $G$), but domain shifts in “backward” direction: at step $i$, argument of $G^{i:N}$ is $h_i$, and $i$ decreases, see [Figure 5](#figure-back-trunc).
+Here we see that forward and backward passes are very similar in nature, but at the same time has a substantial difference. In the forward pass, the domain of each function $G^{0:j}$ we consider is fixed (it's $\mathbb R^n$, the same as the domain of $G$), but codomain shifts in the “forward” direction, see [Figure 4](#figure-forward-trunc). In the backward pass, the codomain of the function $G^{i:N}$ is fixed (it's $\mathbb R$, the same as the codomain of $G$), but domain shifts in “backward” direction: at step $i$, argument of $G^{i:N}$ is $h_i$, and $i$ decreases, see [Figure 5](#figure-back-trunc).
 
 {{< callout note >}}
 
-Let us summarise with an informal description. During the calculations, we want to begin with a simple object and transform it to the object we need. In the forward pass, the simple object is just a vector $x$, that “lives” at the “beginning” of the composition. We transform it by application of the corresponding $g^j$'s until we pull it through the whole composition and get $G(x)$. In the backward pass, the simple object we begin with is the gradient $\nabla_{\\! h_{N-1}} g^{N}$. We can be sure it's “simple” (i.e. a vector-row, not a full matrix) because $g^N$'s codomain is guaranteed to be one-dimensional. This gradient “lives“ at the “end” of the composition, and it is natural to transform it by extending “backward”. When we pull it through the whole composition, we get the desired gradient $\nabla_{\\! x} G$.
+Let us summarise with an informal description. During the calculations, we want to begin with a simple object and transform it into the object we need. In the forward pass, the simple object is just a vector $x$, that “lives” at the “beginning” of the composition. We transform it by application of the corresponding $g^j$'s until we pull it through the whole composition and get $G(x)$. In the backward pass, the simple object we begin with is the gradient $\nabla_{\\! h_{N-1}} g^{N}$. We can be sure it's “simple” (i.e. a vector-row, not a full matrix) because $g^N$'s codomain is guaranteed to be one-dimensional. This gradient “lives“ at the “end” of the composition, and it is natural to transform it by extending “backward”. When we pull it through the whole composition, we get the desired gradient $\nabla_{\\! x} G$.
 
 {{< /callout >}}
 
 {{< spoiler text="Interested in mathematical details? Click here!" >}}
 
-I cannot resist the temptation to discuss a bit more mathematical perspective on equation \eqref{nablastep} and add some rigour to the informal description above. To this end, we have to define formally the spaces where the gradients live.
+I cannot resist the temptation to discuss a bit more mathematical perspective on equation \eqref{nablastep} and add some rigor to the informal description above. To this end, we have to define formally the spaces where the gradients live.
 
-Let's say that for each $i=1,\ldots, N$, $g^i$ is a map from $\mathcal M_{i-1}=\mathbb R^{n_{i-1}}$ to $\mathcal M_{i}=\mathbb R^{n_i}$, $n_N=1$. As before, $h_i = g^i(h_{i-1})$ and $h_0=x$. The gradient $\nabla_{\\! h_i} G^{i:N}$ is a linear map that acts on vectors $\Delta h_i$. It is natural to think about this vectors as based at point $h_i$. The vector space of all such vectors is called a _tangent space_ of $\mathcal M_{i}$ at point $h_i$; it is denoted by $T_{h_i} \mathcal M_i$. Thus the gradient $\nabla_{\\! h_i} G^{i:N}$ is a linear map from $T_{h_i} \mathcal M_i$ to $\mathbb R$, such linear maps (with codomain $\mathbb R$) also known as _linear functionals_ or _covectors_.
+Let's say that for each $i=1,\ldots, N$, $g^i$ is a map from $\mathcal M_{i-1}=\mathbb R^{n_{i-1}}$ to $\mathcal M_{i}=\mathbb R^{n_i}$, $n_N=1$. As before, $h_i = g^i(h_{i-1})$ and $h_0=x$. The gradient $\nabla_{\\! h_i} G^{i:N}$ is a linear map that acts on vectors $\Delta h_i$. It is natural to think about these vectors as based at point $h_i$. The vector space of all such vectors is called a _tangent space_ of $\mathcal M_{i}$ at point $h_i$; it is denoted by $T_{h_i} \mathcal M_i$. Thus the gradient $\nabla_{\\! h_i} G^{i:N}$ is a linear map from $T_{h_i} \mathcal M_i$ to $\mathbb R$, such linear maps (with codomain $\mathbb R$) also known as _linear functionals_ or _covectors_.
 
-The set of all linear functionals defined on some vector space $V$ is again a vector space: one can add linear functionals to each other and multiply them by real numbers. This space is called _dual space_ to $V$ and denoted by $V^*$. The dual space to the tangent space $T_{h_i} \mathcal M_i$ has a special name: it's called a _cotangent space_ of $\mathcal M_i$ at point $h_i$ and denoted by $T_{h_i}^\* \mathcal M_i$.
+The set of all linear functionals defined on some vector space $V$ is again a vector space: one can add linear functionals to each other and multiply them by real numbers. This space is called _dual space_ to $V$ and is denoted by $V^*$. The dual space to the tangent space $T_{h_i} \mathcal M_i$ has a special name: it's called a _cotangent space_ of $\mathcal M_i$ at point $h_i$ and denoted by $T_{h_i}^\* \mathcal M_i$.
 
 So, the gradient $\nabla_{\\! h_i} G^{i:N}$ belongs to the cotangent space $T_{h_i}^\* \mathcal M_i$.
 
@@ -332,11 +332,11 @@ $${{< /math >}}
 
 (Just check from the definition of adjoint that this is indeed equivalent to \eqref{nablastep}.)
 
-So, it is the adjoint to the derivative of $g^i$ that acts on the gradients! And as it is an adjoint, it acts “backwards” relative to the action of the derivative itself (and thus to the map $g^i$). So it solves the mystery of “backwardness” in backpropagation. Mathematically speaking, we are simply applying contravariant Hom-functor and it reverses all the arrows. That's it!
+So, it is the adjoint to the derivative of $g^i$ that acts on the gradients! And as it is an adjoint, it acts “backward” relative to the action of the derivative itself (and thus to the map $g^i$). So it solves the mystery of “backwardness” in backpropagation. Mathematically speaking, we are simply applying contravariant Hom-functor and it reverses all the arrows. That's it!
 
 {{< /spoiler >}}
 
-Now let's look how it works in the neural networks.
+Now let's look at how it works in the neural networks.
 
 ## Backpropagation in neural networks
 
@@ -350,13 +350,13 @@ For simplicity, assume we have a neural network that consists only of three laye
     f^{i}_\theta\colon \mathbb R^{n_{i-1}} \to \mathbb R^{n_i},
 $${{< /math >}} 
 
-where {{< math >}}$\theta\in \mathbb R^p${{< /math >}} is a vector of all parameters of the neural network (i.e. all weights and biases), {{< math >}}$n_i${{< /math >}} is the dimensionality of the output of {{< math >}}$i${{< /math >}}'th layer, {{< math >}}$n_0${{< /math >}} is the input dimensionality of the network. Usually each layer depends only on a subset of parameters in {{< math >}}$\theta${{< /math >}} and implements an affine function in elementwise composition with nonlinear activation function, but we are not interested in such architecture details now and consider rather general case. The full network defines a function
+where {{< math >}}$\theta\in \mathbb R^p${{< /math >}} is a vector of all parameters of the neural network (i.e. all weights and biases), {{< math >}}$n_i${{< /math >}} is the dimensionality of the output of {{< math >}}$i${{< /math >}}'th layer, {{< math >}}$n_0${{< /math >}} is the input dimensionality of the network. Usually, each layer depends only on a subset of parameters in {{< math >}}$\theta${{< /math >}} and implements an affine function in elementwise composition with a nonlinear activation function, but we are not interested in such architecture details now and consider rather the general case. The full network defines a function
 
 {{< math >}}$$
     f_{\theta}(x) := f^{3}_\theta\circ f^{2}_\theta \circ f^{1}_\theta(x)
 $${{< /math >}}
 
-This is a very similar to that discussed in the [previous section](#gradient-of-composition). The main difference is that now all the functions in this composition depend also on the parameter $\theta$.
+This is very similar to that discussed in the [previous section](#gradient-of-composition). The main difference is that now all the functions in this composition depend also on the parameter $\theta$.
 
 Our composition can be visualized in the following way:
 
@@ -368,11 +368,11 @@ We also have some loss function $L(y, y_{true})$ (e.g. in case of quadratic loss
 \mathcal L(\theta) := L(f_\theta(x_{input}), y_{true})
 $${{< /math >}}
 
-that should be minimized during the training. For simplicity, we are discussing the loss at one datapoint; in the real settings, we would average this over the batch.
+that should be minimized during the training. For simplicity, we are discussing the loss at one datapoint; in real settings, we would average this over the batch.
 
 ### Gradient of the loss
 
-To perform the optimization of $\mathcal L(\theta)$ with gradient descent, one need to find its gradient. Chain rule immediately gives:
+To perform the optimization of $\mathcal L(\theta)$ with gradient descent, one needs to find its gradient. Chain rule immediately gives:
 
 {{< math >}}$$
 \begin{equation}
@@ -384,7 +384,7 @@ $${{< /math >}}
 
 where the first multiplier is a gradient of {{< math >}}$L${{< /math >}}, i.e. vector-row of dimensionality {{< math >}}$n_3${{< /math >}} (dimensionality of the output layer), and the second multiplier is a {{< math >}}$(n_3 \times p)${{< /math >}}-matrix.
 
-It is easy to find {{< math >}}$\nabla_{\!y} L ${{< /math >}} provided that {{< math >}}$y${{< /math >}} is already calculated (i.e. in the case of quadratic loss, it's just {{< math >}}$(2y-2y_{true})${{< /math >}}). To find the second multiplier, one have to decompose {{< math >}}$f_\theta${{< /math >}} into a composition of subsequent layer maps and again apply the chain rule. In contrast with the [previous part](#gradient-of-composition), each function now depends not only on its argument, but also on the parameter $\theta$. This leads to new phenomena and I'd like to study it with some not-so-rigorous visualization.
+It is easy to find {{< math >}}$\nabla_{\!y} L ${{< /math >}} provided that {{< math >}}$y${{< /math >}} is already calculated (i.e. in the case of quadratic loss, it's just {{< math >}}$(2y-2y_{true})${{< /math >}}). To find the second multiplier, one has to decompose {{< math >}}$f_\theta${{< /math >}} into a composition of subsequent layer maps and again apply the chain rule. In contrast with the [previous part](#gradient-of-composition), each function now depends not only on its argument but also on the parameter $\theta$. This leads to new phenomena and I'd like to study it with some not-so-rigorous visualization.
 
 Let's fix some small vector {{< math >}}$\Delta \theta \in \mathbb R^p${{< /math >}} and consider a “trajectory” of $x_{input}$ under the action of the “perturbed” maps {{< math >}}$f^{i}_{\theta+\Delta \theta}${{< /math >}}, {{< math >}}$i=1,2,3${{< /math >}}:
 
@@ -396,7 +396,7 @@ The difference between outputs {{< math >}}$f_{\theta+\Delta \theta}(x_{input})-
 \frac{\partial f_\theta}{\partial \theta} \Delta \theta
 $${{< /math >}}
 
-provided that {{< math >}}$\Delta \theta${{< /math >}} is small by the definition of the derivative, see equation \eqref{theta-approx}. (Note that on the picture this difference is represented by a segment on a line, but in reality it's a {{< math >}}$n_3${{< /math >}}-dimensional vector.)
+provided that {{< math >}}$\Delta \theta${{< /math >}} is small by the definition of the derivative, see equation \eqref{theta-approx}. (Note that on the picture this difference is represented by a segment on a line, but in reality, it's a {{< math >}}$n_3${{< /math >}}-dimensional vector.)
 
 ### Derivative of the network
 
@@ -477,15 +477,15 @@ f^2_{\theta}}{\partial h_1}  \frac{\partial f^1_{\theta}}{\partial
 \end{equation}
 $${{< /math >}}
 
-We used a lot of informal derivations with “approximate equal” signs that does not count as a rigorous proof. (Do not try to sell it to your Calculus professor, unless it's me!) They can be easily replaced with several applications of the chain rule, but I want to make clear where each term in this formula came from, and it was easier to do that with the informal picture.
+We used a lot of informal derivations with “approximately equal” signs that do not count as rigorous proof. (Do not try to sell it to your Calculus professor, unless it's me!) They can be easily replaced with several applications of the chain rule, but I want to make clear where each term in this formula came from, and it was easier to do that with the informal picture.
 
 {{< callout note >}}
 
 Let's look at the last formula again. We see that to find a derivative of the network with respect to the parameter $\theta$, we have to account for two effects:
 
-1. Change of the parameter $\theta$ affects output of a particular layer.
+1. Change of the parameter $\theta$ affects the output of a particular layer.
 
-2. Change of the output of a layer affects outputs of the subsequent layers, even if we ignore change of the parameter for them.
+2. Change of the output of a layer affects outputs of the subsequent layers, even if we ignore the change of the parameter for them.
 
 The first effect is addressed by $\partial f_\theta^i / \partial \theta$ multipliers. The second effect is addressed by $\partial f_\theta^i / \partial h^{i-1}$ multipliers. The derivative is a sum of the corresponding effects for each layer.
 
@@ -521,7 +521,7 @@ f^2_{\theta}}{\partial h_1}  \frac{\partial f^1_{\theta}}{\partial
 $$
 {{< /math >}}
 
-Note the familiar pattern? In each term, we have vector-row {{< math >}}$\nabla_{\!y}L${{< /math >}} that is multiplied by a sequence of matrices. That means we need to multiply it left-to-right. Moreover, if we look closer, we see there are common parts in the second and the third summands:
+Do you note the familiar pattern? In each term, we have vector-row {{< math >}}$\nabla_{\!y}L${{< /math >}} that is multiplied by a sequence of matrices. That means we need to multiply it left to right. Moreover, if we look closer, we see there are common parts in the second and the third summands:
 
 {{< math >}}
 $$
@@ -542,13 +542,13 @@ f^2_{\theta}}{\partial h_1}  \frac{\partial f^1_{\theta}}{\partial
 $$
 {{< /math >}}
 
-It means that we can find this common part {{< math >}}$\nabla_{\!y} L \cdot \partial f^3_{\theta}/\partial h_2${{< /math >}} when calculate the second summand, and then reuse it when calculating the third summand. That's allows us to do the calculations even more efficiently. And this is not a coincidence: the same trick works in deeper networks as well!
+It means that we can find this common part {{< math >}}$\nabla_{\!y} L \cdot \partial f^3_{\theta}/\partial h_2${{< /math >}} when calculate the second summand, and then reuse it when calculating the third summand. That allows us to do the calculations even more efficiently. And this is not a coincidence: the same trick works in deeper networks as well!
 
 ### General algorithm for backpropagation
 
 Previously we considered a network with three layers. Now I want to generalize the formula for loss gradient to the general case of the network with $N$ layers.
 
-Note that in each summand on the right-hand side of equation $\eqref{nablamcL}$ only the last multiplier is a derivative with respect to the parameters $\theta$. The beginning part of each product is a gradient of “truncated composition” like in $\eqref{truncated}$ with respect to the output of some of the hidden layer. Indeed, the chain rule implies:
+Note that in each summand on the right-hand side of the equation $\eqref{nablamcL}$ only the last multiplier is a derivative with respect to the parameters $\theta$. The beginning part of each product is a gradient of “truncated composition” like in $\eqref{truncated}$ with respect to the output of some of the hidden layers. Indeed, the chain rule implies:
 
 {{< math >}}$$
 \nabla_{\!y} L 
@@ -580,7 +580,7 @@ Let us denote $h_3 \equiv y$. Then the following nice relations take place:
 \end{align}
 $${{< /math >}}
 
-This is actually just a restatement of the general equation $\eqref{nablastep}$ for truncated compositions.
+This is just a restatement of the general equation $\eqref{nablastep}$ for truncated compositions.
 
 With this new notation, we can rewrite the formula for the gradient $\eqref{nablamcL}$ in the following compact way:
 
@@ -606,7 +606,7 @@ f_\theta^i}{\partial \theta},
 \end{equation}
 $${{< /math >}}
 
-where $h_N\equiv y$. (I am intentionally start the summation from $i=N$ and then decrease $i$ until it equals $1$ for consistency with the previous equation and the algorithm below.) This equation looks simple, and, moreover, there exists efficient algorithm to calculate its right-hand side. First, note that equations $\eqref{nablaLstep1}$-$\eqref{nablaLstep2}$ are immediately generalized as
+where $h_N\equiv y$. (I intentionally start the summation from $i=N$ and then decrease $i$ until it equals $1$ for consistency with the previous equation and the algorithm below.) This equation looks simple, and, moreover, there exists an efficient algorithm to calculate its right-hand side. First, note that equations $\eqref{nablaLstep1}$-$\eqref{nablaLstep2}$ are immediately generalized as
 
 {{< math >}}$$
 \begin{equation}
@@ -644,9 +644,9 @@ That's it. That's how backpropagation allows to efficiently calculate gradients 
 
 ## Adjoint State Method in Neural ODEs
 
-### Neural ODEs: quick recap
+### Neural ODEs: a quick recap
 
-As we discussed previously, during the forward pass, the usual neural network transforms its inputs to outputs in a sequence of discrete steps: one step corresponds to one layer. In neural ODEs, this transformation is performed continously. Now we don't have a discrete set of layers, enumerated by natural numbers $i=1, \ldots, N$. Instead, we have a continuum set of “moments of time”, represented as a segment $[0, T]$. At each moment, we specify “infinitesimal transformation” that occurs when the value passes through this moment.
+As we discussed previously, during the forward pass, the usual neural network transforms its inputs to outputs in a sequence of discrete steps: one step corresponds to one layer. In neural ODEs, this transformation is performed continuously. Now we don't have a discrete set of layers, enumerated by natural numbers $i=1, \ldots, N$. Instead, we have a continuum set of “moments of time”, represented as a segment $[0, T]$. At each moment, we specify the “infinitesimal transformation” that occurs when the value passes through this moment.
 
 Technically, neural ODEs are obtained as a limit case of so-called _residual networks_ (also known as _ResNets_). In the residual networks, the output value of $i$'th layer is determined as
 
@@ -660,7 +660,7 @@ The difference with the usual neural networks is the presence of “$h_{i-1}+{}$
 h_{i}=h_{i-1} + \varepsilon f^{i}_\theta(h_{i-1}), \quad i=1,\ldots, N,
 $${{< /math >}}
 
-where $\varepsilon \sim 1/N$. And that's an equation of well-known [Euler method](https://en.wikipedia.org/wiki/Euler_method) of the numerical solution of a differential equation! As $N$ tends to infinity, the sequence of values $h_i$ tends to a solution of the corresponding differential equation. That's the rationale.
+where $\varepsilon \sim 1/N$. And that's an equation of the well-known [Euler method](https://en.wikipedia.org/wiki/Euler_method) of the numerical solution of a differential equation! As $N$ tends to infinity, the sequence of values $h_i$ tends to a solution of the corresponding differential equation. That's the rationale.
 
 Now the formal settings. Consider a differential equation
 
@@ -677,7 +677,7 @@ g^{0:T}_\theta & (x_{input}) =\varphi(T; x_{input};\theta),
 \end{align*}
 $${{< /math >}}
 
-also known as _phase flow map_ of our differential equation.
+also known as the _phase flow map_ of our differential equation.
 
 
 
@@ -689,7 +689,7 @@ There is a “dictionary” between the usual neural networks and neural ODEs. T
 
 {{< /callout >}}
 
-Okay, now if we have a differential equation, we have a corresponding map from inputs to outputs. But how we define this differential equation? How to define the function $f_\theta(t, x)$. And that's easy: let's say it is given by another (usual) neural network! In this case, $\theta$ is a vector of parameters of this network (weights and biases), and it determines the function $f_\theta$ and therefore determines the map $g^{0:T}_\theta$.
+Okay, now if we have a differential equation, we have a corresponding map from inputs to outputs. But how do we define this differential equation? How to define the function $f_\theta(t, x)$. And that's easy: let's say it is given by another (usual) neural network! In this case, $\theta$ is a vector of parameters of this network (weights and biases), and it determines the function $f_\theta$ and therefore determines the map $g^{0:T}_\theta$.
 
 How to learn $\theta$?
 
@@ -751,13 +751,13 @@ We know by definition, that $\varphi(x_{input}; 0; \theta)=x_{input}$ and theref
 
 Now we can solve equation $\eqref{var-u-theta}$, find $v(T)$ and that's all. What's the problem with this approach?
 
-In fact, $v(t)$ is a large $(n\times p)$-matrix, it contains the derivatives of all $n$ components of the solution with respect to every parameter. It can be expensive to calculate this matrix, especially if $n$ is large. And we don't need it by itself: what we are interested in is the product of this matrix to $\nabla_{\\! y}L$. Basically, to solve this equation is like to find a product in equation $\eqref{nablaG}$ from right to left: possible, but not optimal. How to do it in a smart way? Of course, with backpropagation!
+In fact, $v(t)$ is a large $(n\times p)$-matrix, it contains the derivatives of all $n$ components of the solution with respect to every parameter. It can be expensive to calculate this matrix, especially if $n$ is large. And we don't need it by itself: what we are interested in is the product of this matrix to $\nabla_{\\! y}L$. Basically, to solve this equation is like to find a product in equation $\eqref{nablaG}$ from right to left: possible, but not optimal. How to do it smartly? Of course, with backpropagation!
 
 ### Perturbed trajectories
 
-We will follow the ideas discussed in the section [Derivative of the network](#derivative-of-the-network). First, let us consider a network with perturbed vector of parameters, i.e. instead of $f(t, x, \theta)$ we consider an equation given by $f(t, x, \theta+\Delta \theta)$ for some small value of $\Delta \theta$. Consider two solutions that pass through the same point $(0, x_{input})$: the initial solution $x(t; \theta)$ and the perturbed solution $x(t; \theta+\Delta \theta)$. (From now on, we fixed the input value and skip $x_{input}$ in the notation.) We also introduce pertubed phase flow $g^{0:T}_{\theta+\Delta \theta}$.
+We will follow the ideas discussed in the section [Derivative of the network](#derivative-of-the-network). First, let us consider a network with perturbed vector of parameters, i.e. instead of $f(t, x, \theta)$ we consider an equation given by $f(t, x, \theta+\Delta \theta)$ for some small value of $\Delta \theta$. Consider two solutions that pass through the same point $(0, x_{input})$: the initial solution $x(t; \theta)$ and the perturbed solution $x(t; \theta+\Delta \theta)$. (From now on, we fixed the input value and skip $x_{input}$ in the notation.) We also introduce perturbed phase flow $g^{0:T}_{\theta+\Delta \theta}$.
 
-The difference between the solutions at moment $T$ can be approximated using the derivative of the phase flow map with respect to $\theta$:
+The difference between the solutions at the moment $T$ can be approximated using the derivative of the phase flow map with respect to $\theta$:
 
 {{< math >}}$$
 \varphi(T; \theta+\Delta \theta)-\varphi(T; \theta)  = 
@@ -768,9 +768,9 @@ $${{< /math >}}
 
 {{< figure src="/img/adjoint-state/backprop-9.svg" width="90%" title="Figure 10. The initial and the perturbed solutions" id='initial-pert' >}}
 
-Our idea is to decompose this difference into sum of smaller differences like we did in the section [Derivative of the network](#derivative-of-the-network) (see [Figure 8](#figure-decomp)). For this, we need to introduce a bit more notation.
+Our idea is to decompose this difference into a sum of smaller differences like we did in the section [Derivative of the network](#derivative-of-the-network) (see [Figure 8](#figure-decomp)). For this, we need to introduce a bit more notation.
 
-Consider arbitrary moment $t^* \in [0, T]$ and a point {{< math >}}$(t^*, x(t^*; \theta))${{< /math >}} that lies on the graph of the unperturbed solution (also called _unperturbed trajectory_). Sometimes for brevity we will skip $\theta$ in the notation for the unperturbed solutions and write simply $x(t^\*)$. Now let's consider a solution of _perturbed_ system through this point, see [Figure 11](#figure-additional-perturbed) below. The value of this solution at point $T$ is denoted by
+Consider arbitrary moment $t^* \in [0, T]$ and a point {{< math >}}$(t^*, x(t^*; \theta))${{< /math >}} that lies on the graph of the unperturbed solution (also called _unperturbed trajectory_). Sometimes for brevity, we will skip $\theta$ in the notation for the unperturbed solutions and write simply $x(t^\*)$. Now let's consider a solution of the _perturbed_ system through this point, see [Figure 11](#figure-additional-perturbed) below. The value of this solution at point $T$ is denoted by
 
 {{< math >}}$$
 g^{t^*:T}_{\theta+\Delta \theta}(x(t^*)),
@@ -881,11 +881,11 @@ As $\Delta \theta$ becomes small, this equality becomes more and more exact. It 
 \end{equation}
 $${{< /math >}}
 
-This equation is a continuous counterpart of equation \eqref{partialftheta}. Indeed, the first multiplier corresponds to a derivative of the output of the network with respect to the output of some intermediate layer. The second multiplier gives the dependency of the output of intermediate layer with respect to the parameter.
+This equation is a continuous counterpart of equation \eqref{partialftheta}. Indeed, the first multiplier corresponds to a derivative of the output of the network with respect to the output of some intermediate layer. The second multiplier gives the dependency of the output of the intermediate layer with respect to the parameter.
 
 {{< callout note >}}
 
-The derivation above is even less rigorous and more risky than the previous one. We deal with two limits here, $\Delta t \to 0$ and $\Delta \theta \to 0$, and this is a red flag for everyone who studied Calculus: intuition can easily fool us here. I present this handwaving only because I know the actual proof and absolutely sure everything is OK. At the same time, I believe that this kind of approximate derivations and plots like [Figure 12](#figure-many-perturbed) allows us to _understand_ what is really going on, and the formal proof is just a check that our intuition still works correctly.
+The derivation above is even less rigorous and riskier than the previous one. We deal with two limits here, $\Delta t \to 0$ and $\Delta \theta \to 0$, and this is a red flag for everyone who studied Calculus: intuition can easily fool us here. I present this handwaving only because I know the actual proof and am absolutely sure everything is OK. At the same time, I believe that this kind of approximate derivations and plots like [Figure 12](#figure-many-perturbed) allows us to _understand_ what is really going on, and the formal proof is just a check that our intuition still works correctly.
 
 {{< /callout >}}
 
@@ -915,7 +915,7 @@ Let us consider the first multiplier. Note that $\nabla_{\\! y}L$ is the gradien
 \nabla_{\! x}(L\circ g^{t:T}_\theta(x)),
 $${{< /math >}}
 
-where the gradient is taken at point $x=x(t)$. Let us introduce a bit informal notation:
+where the gradient is taken at point $x=x(t)$. Let us introduce a bit of informal notation:
 
 {{< math >}}$$
 \nabla_{\! x}(L\circ g^{t:T}_\theta(x))=:\nabla_{\! x(t)} L.
@@ -930,9 +930,9 @@ It is a counterpart of $\nabla_{\\! h_i} L$ in the section [General algorithm fo
 \end{equation}
 $${{< /math >}}
 
-And it looks very similar to equation \eqref{nabla-L-sum}, isn't it? Note that we don't have the large matrix derivative $\partial g_\theta^{t:T}(x) / \partial x$ in the formula anymore: it was “swallowed“ by the gradient $\nabla_{\\! x(t)} L$. Looks like a good news! But are there any good ways to find this gradient?
+And it looks very similar to equation \eqref{nabla-L-sum}, isn't it? Note that we don't have the large matrix derivative $\partial g_\theta^{t:T}(x) / \partial x$ in the formula anymore: it was “swallowed“ by the gradient $\nabla_{\\! x(t)} L$. Looks like good news! But are there any good ways to find this gradient?
 
-In the usual backpropagation, we used recurrent equation \eqref{nablaLstep} to find $\nabla_{\\! h_i} L$ one by one (the backward pass). In the continous setting, we don't have such a recurrence. Looks like a bad news. But don't worry, a bit of ODE magic will help us!
+In the usual backpropagation, we used recurrent equation \eqref{nablaLstep} to find $\nabla_{\\! h_i} L$ one by one (the backward pass). In the continuous setting, we don't have such a recurrence. Looks like bad news. But don't worry, a bit of ODE magic will help us!
 
 ### The adjoint equation
 
@@ -961,13 +961,13 @@ Then take a gradient with respect to $x_0$ and use the chain rule:
 \frac{\partial g^{0: t}(x_0)}{\partial x_0}.
 $${{< /math >}}
 
-Clearly, the left-hand side is $\nabla_{\\! x(0)} L$, i.e. $a(0)$, and the first multiplier of the right-hand side is $\nabla_{\\! x(t)} L=a(t)$. Therefore, one have:
+Clearly, the left-hand side is $\nabla_{\\! x(0)} L$, i.e. $a(0)$, and the first multiplier of the right-hand side is $\nabla_{\\! x(t)} L=a(t)$. Therefore, one has:
 
 {{< math >}}$$
 a(0) = a(t)\frac{\partial g^{0: t}(x_0)}{\partial x_0}.
 $${{< /math >}}
 
-Now let's take a derivative with respect to $t$. The left-hand side does not depend on $t$, so the derivative is 0. At the right-hand side, one have a product of two time-dependent matrices, so [Leibniz product rule](https://en.wikipedia.org/wiki/Product_rule) should be applied:
+Now let's take a derivative with respect to $t$. The left-hand side does not depend on $t$, so the derivative is 0. On the right-hand side, one has a product of two time-dependent matrices, so [Leibniz product rule](https://en.wikipedia.org/wiki/Product_rule) should be applied:
 
 {{< math >}}$$
 0 = \dot a(t)\frac{\partial g^{0: t}(x_0)}{\partial x_0}+a(t) \frac{d}{dt} \frac{\partial g^{0: t}(x_0)}{\partial x_0}.
@@ -1016,7 +1016,7 @@ Let's find a derivative of $w(t)$ with respect to $t$. Note that $w$ is itself a
 \frac{\partial}{\partial x_0} \frac{\partial \varphi(t; x_0)}{\partial t}.
 $${{< /math >}}
 
-Now we use the fact that $\varphi$ is a solution of our equation, so its derivative with respect to time equal to the right-hand side:
+Now we use the fact that $\varphi$ is a solution of our equation, so its derivative with respect to time is equal to the right-hand side:
 
 {{< math >}}$$
 \dot w(t) = \frac{\partial}{\partial x_0} f(t, \varphi(t; x_0)).
@@ -1055,7 +1055,7 @@ It can be shown from theory of linear differential equations that matrix $\parti
 \end{equation}
 $${{< /math >}}
 
-This! This is the adjoint equation we are looking for! In the right-hand part the derivative is taken at point $x=x(t)$, i.e. along the solution of the initial differential equation.
+This! This is the adjoint equation we are looking for! In the right-hand part, the derivative is taken at point $x=x(t)$, i.e. along the solution of the initial differential equation.
 
 So, we have an equation on $a$, but we know that in ODE the equation alone is not enough to specify a solution. What about the initial condition? Look at $a(T)$. It is a derivative of $L$ with respect to the value of the layer $T$. But the layer $T$ is the output layer of the network. Therefore, $a(T)$ is just a derivative of $L(y, y_{true})$ with respect to $y$, where $y=x(T)$. For a given $x(T)$, the derivative does not depend on the network! And therefore it's an appropriate initial condition for the adjoint equation:
 
@@ -1068,7 +1068,7 @@ $${{< /math >}}
 
 ### Backpropagation in neural ODEs
 
-Let's summarize the algorithm to find loss gradient for Neural ODEs. We have an equation
+Let's summarize the algorithm to find the loss gradient for Neural ODEs. We have an equation
 
 {{< math >}}$$
 \begin{equation}
@@ -1083,13 +1083,13 @@ $$\mathcal L(\theta) = L(x(T;\theta), y_{true})$$
 
 with respect to $\theta$. Here $x(t; \theta)$ is a solution of equation \eqref{eq} with the initial condition $x(0; \theta)=x_{input}$. As before, we will omit the dependence on $\theta$ in the following equations.
 
-First, we do the forward pass, i.e. solve the equation \eqref{eq} numerically and find $x(T)$. In the usual neural network, we store all the outputs of intermediate layers $h_1, \ldots, h_N$ to use them in the backward pass. In the neural ODE, strictly speaking, it's impossible to store all the intermediate outputs, because there are infinite number of them. We can theoretically store intermediate outputs at some time sequence, i.e. store $x(t_j)$ for some moments $t_j$, that can be used to approximate the full trajectory. However, it appears that we don't need it and can make our algorithms memory-efficient. So, just store $x_{output}=x(T)$.
+First, we do the forward pass, i.e. solve the equation \eqref{eq} numerically and find $x(T)$. In the usual neural network, we store all the outputs of intermediate layers $h_1, \ldots, h_N$ to use them in the backward pass. In the neural ODE, strictly speaking, it's impossible to store all the intermediate outputs, because there is an infinite number of them. We can theoretically store intermediate outputs at some time sequence, i.e. store $x(t_j)$ for some moments $t_j$, that can be used to approximate the full trajectory. However, it appears that we don't need it and can make our algorithms memory-efficient. So, just store $x_{output}=x(T)$.
 
 Now backward pass. We need to solve the adjoint equation \eqref{adjoint} and find integral \eqref{nabla-L-int}. It can be a bit tricky.
 
-First, as before, we want to be memory-efficient and thus don't want to store the trajectories. So we need to solve the adjoint equation and integrate at the same time. Moreover, the right-hand side of the adjoint equation \eqref{adjoint} depends on the solution of the initial equation $x(t)$, that we didn't store. So we have to reconstruct it together with solving adjoint equation and integrating.
+First, as before, we want to be memory-efficient and thus don't want to store the trajectories. So we need to solve the adjoint equation and integrate \eqref{nabla-L-int} at the same time. Moreover, the right-hand side of the adjoint equation \eqref{adjoint} depends on the solution of the initial equation $x(t)$, which we didn't store. So we have to reconstruct it together with solving the adjoint equation and integrating \eqref{nabla-L-int}.
 
-A lot of things to do! However, it appears we can do all together by combining everything into one system of ODEs:
+A lot of things to do! However, it appears we can do it all together by combining everything into one system of ODEs:
 
 {{< math >}}$$
 \begin{equation}
@@ -1112,7 +1112,7 @@ u(T)=0
 \end{cases}
 $${{< /math >}}
 
-The first two equations of the system \eqref{final} are just equations \eqref{eq} and \eqref{adjoint}. What about the third one? We see that its right-hand side doesn't depend on the unkown variable $u$, so its solution (provided that we know the solutions of two other equations) is just an integral:
+The first two equations of the system \eqref{final} are just equations \eqref{eq} and \eqref{adjoint}. What about the third one? We see that its right-hand side doesn't depend on the unknown variable $u$, so its solution (provided that we know the solutions of two other equations) is just an integral:
 
 {{< math >}}$$
 \begin{align*}
@@ -1131,7 +1131,7 @@ $${{< /math >}}
 
 and this is exactly the value we are interested in!
 
-So, in the backward pass we just solve system \eqref{final} with the given initial conditions over the segment $[0, T]$ and return $u(0)$. That's all!
+So, in the backward pass, we just solve system \eqref{final} with the given initial conditions over the segment $[0, T]$ and return $u(0)$. That's all!
 
 {{< spoiler text="Interested in the rigorous derivation of system \eqref{final}? I have one!" >}}
 
@@ -1150,9 +1150,9 @@ Then consider an extended adjoint
 (L\circ g^{t:T}\_\theta)) = (a(t), u(t)),
 $${{< /math >}}
 
-i.e. $\vec{a}$ is just a concatenation of vectors $a$ and $u$, the first component, as before, measures how $L$ depends on the “output of the layer $t$” (i.e. $x(t)$), and the second component measures how $L$ depends on the parameter $\theta$. Both gradients are found at point $x(t)$ of the unperturbed solution. In other words, while calculating $u(t)$, one considers a system that works like the following: on the segment $[0, t]$, it uses the original value of the parameter $\theta$, and on the segment $[t, T]$ is uses the perturbed value of the parameter, i.e. $\theta + \Delta \theta$. Then $u(t)$ measures the effect of $\Delta \theta$ on the output $x(T; \theta + \Delta \theta)$.
+i.e. $\vec{a}$ is just a concatenation of vectors $a$ and $u$, the first component, as before, measures how $L$ depends on the “output of the layer $t$” (i.e. $x(t)$), and the second component measures how $L$ depends on the parameter $\theta$. Both gradients are found at point $x(t)$ of the unperturbed solution. In other words, while calculating $u(t)$, one considers a system that works like the following: on the segment $[0, t]$, it uses the original value of the parameter $\theta$, and on the segment $[t, T]$ it uses the perturbed value of the parameter, i.e. $\theta + \Delta \theta$. Then $u(t)$ measures the effect of $\Delta \theta$ on the output $x(T; \theta + \Delta \theta)$.
 
-Then $\vec{a}$ should satisfy the adjoint equation \eqref{adjoint}, where $x$ is replaced with $(x, \theta)$ and $f$ is replaced with $(f_{\theta}(t, x), 0)$. One have:
+Then $\vec{a}$ should satisfy the adjoint equation \eqref{adjoint}, where $x$ is replaced with $(x, \theta)$ and $f$ is replaced with $(f_{\theta}(t, x), 0)$. One has:
 
 {{< math >}}$$
 (\dot a, \dot u) =
@@ -1172,17 +1172,17 @@ Hooray!
 
 ## Concluding remarks
 
-That was a long story, and it's time to conclude. Let me reiterate several main ideas:
+That was a long story, and now it's time to conclude. Let me reiterate several main ideas:
 
-- The goal of backpropagation and adjoint state method is to find a gradient of the loss function with respect to the parameters in a computationally efficient way. We don't want to waste resources calculating more than needed, so the order of operations matters.
+- The goal of the backpropagation and adjoint state method is to find a gradient of the loss function with respect to the parameters in a computationally efficient way. We don't want to waste resources calculating more than needed, so the order of operations matters.
 
-- These methods are based on a simple idea: when you have a composition of several functions such that the last function in the composition takes values in one-dimensional space (and therefore the full composition do the same), the derivative of the output of such a composition with respect to any intermediate output is just a vector-row (covector), and not a full matrix.
+- These methods are based on a simple idea: when you have a composition of several functions such that the last function in the composition takes values in one-dimensional space (and therefore the full composition does the same), the derivative of the output of such a composition with respect to any intermediate output is just a vector-row (covector), and not a full matrix.
 
 - This idea can be naturally extended to continuous settings, where instead of a long composition we have a differential equation.
 
-- Both in discrete and continuous settings there are effective algorithms to calculate the derivatives of the one-dimensional output with respect to intermediate values. These algorithms work “backward”: from the last intermediate “layers” to the first ones. In discrete settings, it's the reccurrence \eqref{nablastep} (also known as \eqref{nablaLstep}). In continous settings, it's the adjoint equation \eqref{adjoint}.
+- Both in discrete and continuous settings there are effective algorithms to calculate the derivatives of the one-dimensional output with respect to intermediate values. These algorithms work “backward”: from the last intermediate “layers” to the first ones. In discrete settings, it's the recurrence \eqref{nablastep} (also known as \eqref{nablaLstep}). In continuous settings, it's the adjoint equation \eqref{adjoint}.
 
-- These algorithms efficiently reuse the derivative they found at the previous “steps” and do not waste time calculating things that don't needed.
+- These algorithms efficiently reuse the derivative they found at the previous “steps” and do not waste time calculating things that are not needed.
 
 - It is possible to adapt these algorithms to settings when you need a derivative of the output with respect to the parameters, as we have in the neural networks.
 
