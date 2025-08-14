@@ -6,15 +6,15 @@ title: Ilya V. Schurov
 superuser: true
 
 # Role/position/tagline
-role: Associate Professor
+role: Mathematics, ML & AI
 
 # Organizations/Affiliations to show in About widget
 organizations:
-- name: HSE University
-  url: https://www.hse.ru/
+- name: Omnifold
+  url: https://omnifold.ai/
 
 # Short bio (displayed in user profile at end of posts)
-bio: Mathematician and technology enthusiast
+bio: Mathematician and ML researcher
 
 # Interests to show in About widget
 interests:
@@ -67,17 +67,10 @@ email: "ilya@schurov.com"
 highlight_name: true
 ---
 
-I'm a mathematician and technology enthusiast. Since 2010 I work as an associate
-professor at HSE University, where I am participating in various research
-projects with topics ranging from [differential equations](/tag/differential-equations) 
-and [physics](/tag/physics) to [game theory](/tag/game-theory) to 
-[linguistics](/tag/linguistics). I love pure mathematics and I equally love to code and solve
-applied problems. Currently I'm looking for opportunities to apply my
-broad mathematical background, including dynamical systems, geometry and
-topology, to data analysis. My teaching experience include courses on calculus,
-machine learning, differential equations and data science. I prepared several
-online courses for Coursera devoted to foundations of machine learning and wrote
-[free interactive textbooks](#textbooks) on calculus and ordinary differential equations that
-are used by thousands Russian-speaking students.
+I'm a mathematician, ML researcher, and technology enthusiast. I love pure mathematics, and I equally enjoy coding and solving applied problems. This dual passion allows me to contribute meaningfully across disciplines, in both academia and industry.  
+
+Currently, I work at [Omnifold](https://omnifold.ai), where we use AI and mathematical modeling for forecasting and optimization. Previously, I was a researcher at Radboud University and an associate professor at HSE University, working on projects spanning [differential equations](/tag/differential-equations), [physics](/tag/physics), [game theory](/tag/game-theory), [biology](/tag/biology), and [linguistics](/tag/linguistics).
+
+I’ve taught university courses on calculus, machine learning, differential equations, and data science. I also created several online courses for Coursera on the foundations of machine learning and authored [free interactive textbooks](#textbooks) on calculus and ordinary differential equations, used by thousands of Russian-speaking students.
 
 {{< icon name="download" pack="fas" >}} Download my {{< staticref "uploads/IlyaSchurovCV.pdf" "newtab" >}}CV{{< /staticref >}}.

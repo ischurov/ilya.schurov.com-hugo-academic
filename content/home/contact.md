@@ -35,6 +35,10 @@ content:
       icon_pack: fab
       name: 'LinkedIn'
       link: 'https://www.linkedin.com/in/ischurov/'
+    - icon: github
+      icon_pack: fab
+      name: GitHub
+      link: https://github.com/ischurov
     - icon: telegram
       icon_pack: fab
       name: Telegram

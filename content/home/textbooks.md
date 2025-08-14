@@ -7,14 +7,14 @@ widget: portfolio
 headless: true
 
 # Order that this section appears on the page.
-weight: 65
+weight: 68
 
-title: Research Projects
+title: Textbooks
 subtitle: ''
 
 content:
   # Page type to display. E.g. project.
-  page_type: project
+  page_type: textbook
 
   # Default filter index (e.g. 0 corresponds to the first `filter_button` instance below).
   filter_default: 0
@@ -44,5 +44,11 @@ design:
   view: 5
 
   # For Showcase view, flip alternate rows?
-  flip_alt_rows: false
+  flip_alt_rows: true
 ---
+
+I want to reinvent mathematical textbooks: make them accessible, friendly,
+full of illustrations and in-depth explanations of the essence of mathematical
+concepts. To achieve this goal, I even developed my own publishing platform that
+leverages modern web-technologies and allows to include interactive elements to
+mathematical texts.
